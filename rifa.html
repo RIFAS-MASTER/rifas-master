@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>RIFAS MASTER - Rifa</title>
+
+  <!-- html2canvas para capturar el comprobante -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, doc, getDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -101,9 +106,9 @@
           fechaRegistro: new Date()
         });
       }
+
       alert("✅ Boletos reservados correctamente.");
 
-      // Leer nuevamente los datos de la rifa
       const docRef = doc(db, "rifas", rifaId);
       const docSnap = await getDoc(docRef);
       const dataRifa = docSnap.data();
@@ -112,16 +117,51 @@
       const total = boletosSeleccionados.length * dataRifa.precioBoleto;
 
       generarWhatsapp(nombre, telefono, total, boletosTexto, dataRifa);
-      window.location.reload();
+      mostrarComprobante(nombre, telefono, poblacion, boletosTexto, total, dataRifa.nombreRifa);
+    }
 
-      alert("✅ Boletos reservados correctamente.");
-    
+    async function generarWhatsapp(nombre, telefono, total, boletosTexto, dataRifa) {
+      let mensaje = `🎟 *Confirmación de participación en ${dataRifa.nombreRifa}*%0A`;
+      mensaje += `👤 Nombre: ${nombre}%0A`;
+      mensaje += `📱 Teléfono: ${telefono}%0A`;
+      mensaje += `🎫 Boletos: ${boletosTexto}%0A`;
+      mensaje += `💰 Total a pagar: $${total}%0A%0A`;
+      mensaje += `🏦 Datos de pago:%0A`;
+      mensaje += `Banco: ${dataRifa.banco || "Por definir"}%0A`;
+      mensaje += `Cuenta: ${dataRifa.cuenta || "Por definir"}%0A`;
+      mensaje += `CLABE: ${dataRifa.clabe || "Por definir"}%0A`;
+      mensaje += `Beneficiario: ${dataRifa.beneficiario || "Por definir"}`;
+
+      const url = `https://wa.me/?text=${mensaje}`;
+      window.open(url, "_blank");
+    }
+
+    function mostrarComprobante(nombre, telefono, poblacion, boletosTexto, total, rifaNombre) {
+      const comprobanteDiv = document.getElementById("comprobante");
+      comprobanteDiv.innerHTML = `
+        <h3>Rifa: ${rifaNombre}</h3>
+        <p>Nombre: ${nombre}</p>
+        <p>Teléfono: ${telefono}</p>
+        <p>Población: ${poblacion}</p>
+        <p>Boletos: ${boletosTexto}</p>
+        <p>Total: $${total}</p>
+        <p>Fecha: ${new Date().toLocaleString()}</p>
+      `;
+    }
+
+    function generarImagen() {
+      html2canvas(document.getElementById("comprobante")).then(canvas => {
+        const enlace = document.createElement("a");
+        enlace.download = `comprobante_${Date.now()}.png`;
+        enlace.href = canvas.toDataURL();
+        enlace.click();
+      });
     }
 
     window.onload = cargarRifa;
     window.confirmarCompra = confirmarCompra;
   </script>
- 
+
   <style>
     .boleto { display:inline-block; border:1px solid #aaa; padding:10px; margin:5px; cursor:pointer; }
     .disponible { background:#d4edda; }
@@ -129,6 +169,7 @@
     .seleccionado { background:#fff3cd; border:2px solid #ffc107; }
   </style>
 </head>
+
 <body>
   <h1 id="nombreRifa"></h1>
   <p>Precio por boleto: $<span id="precioBoleto"></span></p>
@@ -142,5 +183,10 @@
   <input type="text" id="telefono" placeholder="Teléfono"><br><br>
   <input type="text" id="poblacion" placeholder="Población"><br><br>
   <button onclick="confirmarCompra()">Confirmar Compra</button>
+
+  <h3>Tu comprobante:</h3>
+  <div id="comprobante" style="border:1px solid #333; padding:20px; width:300px; margin-bottom:20px;"></div>
+  <button onclick="generarImagen()">Descargar Comprobante</button>
+  <canvas id="canvasCaptura" style="display:none;"></canvas>
 </body>
 </html>
