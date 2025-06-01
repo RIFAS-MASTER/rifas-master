@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>RIFAS MASTER - Rifa</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC_YFwpvNIQPIFUsjtfSxuV45r7Hxuvh7E",
+      authDomain: "rifasmaster.firebaseapp.com",
+      projectId: "rifasmaster",
+      storageBucket: "rifasmaster.appspot.com",
+      messagingSenderId: "441338254596",
+      appId: "1:441338254596:web:c0e39d99789d193ee6ec51"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const params = new URLSearchParams(window.location.search);
+    const rifaId = params.get("id");
+    let modoAleatorio = false;
+    let boletosSeleccionados = [];
+
+    async function cargarRifa() {
+      const docRef = doc(db, "rifas", rifaId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        document.getElementById("nombreRifa").innerText = data.nombreRifa;
+        document.getElementById("precioBoleto").innerText = data.precioBoleto;
+        document.getElementById("totalBoletos").innerText = data.cantidadBoletos;
+        modoAleatorio = data.modoAleatorio;
+        cargarBoletos();
+      } else {
+        alert("Rifa no encontrada");
+      }
+    }
+
+    async function cargarBoletos() {
+      const lista = document.getElementById("listaBoletos");
+      lista.innerHTML = "";
+      boletosSeleccionados = [];
+
+      const boletosRef = collection(db, "rifas", rifaId, "boletos");
+      const querySnapshot = await getDocs(boletosRef);
+
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const div = document.createElement("div");
+        div.classList.add("boleto");
+        div.dataset.numero = docSnap.id;
+
+        if (data.estado === "disponible") {
+          div.classList.add("disponible");
+          div.onclick = () => toggleSeleccion(div);
+        } else {
+          div.classList.add("ocupado");
+        }
+
+        let contenido = `#${data.numeroBoleto}`;
+        if (modoAleatorio) {
+          contenido += `<br>(${data.oportunidades.join(",")})`;
+        }
+        div.innerHTML = contenido;
+        lista.appendChild(div);
+      });
+    }
+
+    function toggleSeleccion(div) {
+      const numero = div.dataset.numero;
+      if (boletosSeleccionados.includes(numero)) {
+        boletosSeleccionados = boletosSeleccionados.filter(n => n !== numero);
+        div.classList.remove("seleccionado");
+      } else {
+        boletosSeleccionados.push(numero);
+        div.classList.add("seleccionado");
+      }
+    }
+
+    async function confirmarCompra() {
+      const nombre = document.getElementById("nombre").value.trim();
+      const telefono = document.getElementById("telefono").value.trim();
+      const poblacion = document.getElementById("poblacion").value.trim();
+
+      if (!nombre || !telefono || boletosSeleccionados.length === 0) {
+        alert("Completa tus datos y selecciona boletos.");
+        return;
+      }
+
+      for (const num of boletosSeleccionados) {
+        const boletoRef = doc(db, "rifas", rifaId, "boletos", num);
+        await updateDoc(boletoRef, {
+          estado: "ocupado",
+          comprador: nombre,
+          telefono,
+          poblacion,
+          fechaRegistro: new Date()
+        });
+      }
+      alert("✅ Boletos reservados correctamente.");
+
+      // Leer nuevamente los datos de la rifa
+      const docRef = doc(db, "rifas", rifaId);
+      const docSnap = await getDoc(docRef);
+      const dataRifa = docSnap.data();
+
+      const boletosTexto = boletosSeleccionados.join(", ");
+      const total = boletosSeleccionados.length * dataRifa.precioBoleto;
+
+      generarWhatsapp(nombre, telefono, total, boletosTexto, dataRifa);
+      window.location.reload();
+
+      alert("✅ Boletos reservados correctamente.");
+    
+    }
+
+    window.onload = cargarRifa;
+    window.confirmarCompra = confirmarCompra;
+  </script>
+ 
+  <style>
+    .boleto { display:inline-block; border:1px solid #aaa; padding:10px; margin:5px; cursor:pointer; }
+    .disponible { background:#d4edda; }
+    .ocupado { background:#f8d7da; cursor:not-allowed; }
+    .seleccionado { background:#fff3cd; border:2px solid #ffc107; }
+  </style>
+</head>
+<body>
+  <h1 id="nombreRifa"></h1>
+  <p>Precio por boleto: $<span id="precioBoleto"></span></p>
+  <p>Total de boletos: <span id="totalBoletos"></span></p>
+
+  <h3>Selecciona tus boletos:</h3>
+  <div id="listaBoletos"></div>
+
+  <h3>Tus datos:</h3>
+  <input type="text" id="nombre" placeholder="Tu nombre"><br><br>
+  <input type="text" id="telefono" placeholder="Teléfono"><br><br>
+  <input type="text" id="poblacion" placeholder="Población"><br><br>
+  <button onclick="confirmarCompra()">Confirmar Compra</button>
+</body>
+</html>
