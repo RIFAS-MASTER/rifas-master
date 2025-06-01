@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>RIFAS MASTER - Rifas Disponibles</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC_YFwpvNIQPIFUsjtfSxuV45r7Hxuvh7E",
+      authDomain: "rifasmaster.firebaseapp.com",
+      projectId: "rifasmaster",
+      storageBucket: "rifasmaster.appspot.com",
+      messagingSenderId: "441338254596",
+      appId: "1:441338254596:web:c0e39d99789d193ee6ec51"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function cargarRifas() {
+      const lista = document.getElementById("listaRifas");
+      lista.innerHTML = "";
+
+      const querySnapshot = await getDocs(collection(db, "rifas"));
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const div = document.createElement("div");
+        div.style.border = "1px solid #ccc";
+        div.style.margin = "10px";
+        div.style.padding = "10px";
+
+        div.innerHTML = `
+          <h3>${data.nombreRifa}</h3>
+          <p>Boletos: ${data.cantidadBoletos}</p>
+          <p>Precio por boleto: $${data.precioBoleto}</p>
+          <button onclick="window.location.href='rifa.html?id=${doc.id}'">Ver Rifa</button>
+        `;
+        lista.appendChild(div);
+      });
+    }
+
+    window.onload = cargarRifas;
+  </script>
+</head>
+<body>
+  <h1>🎯 Bienvenido a RIFAS MASTER</h1>
+  <div id="listaRifas">Cargando rifas...</div>
+</body>
+</html> 
