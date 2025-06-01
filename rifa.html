@@ -4,14 +4,13 @@
   <meta charset="UTF-8">
   <title>RIFAS MASTER - Rifa</title>
 
-  <!-- html2canvas para capturar el comprobante -->
+  <!-- html2canvas para generar el comprobante -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-  <!-- Firebase SDK -->
   <script type="module">
-    
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, doc, getDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getStorage, ref, uploadString } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyC_YFwpvNIQPIFUsjtfSxuV45r7Hxuvh7E",
@@ -25,7 +24,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const storage = getStorage(app);
-
 
     const params = new URLSearchParams(window.location.search);
     const rifaId = params.get("id");
@@ -130,10 +128,18 @@
       mensaje += `🎫 Boletos: ${boletosTexto}%0A`;
       mensaje += `💰 Total a pagar: $${total}%0A%0A`;
       mensaje += `🏦 Datos de pago:%0A`;
-      mensaje += `Banco: ${dataRifa.banco || "Por definir"}%0A`;
-      mensaje += `Cuenta: ${dataRifa.cuenta || "Por definir"}%0A`;
-      mensaje += `CLABE: ${dataRifa.clabe || "Por definir"}%0A`;
-      mensaje += `Beneficiario: ${dataRifa.beneficiario || "Por definir"}`;
+
+      if (dataRifa.cuentasBancarias && dataRifa.cuentasBancarias.length > 0) {
+        dataRifa.cuentasBancarias.forEach((cuenta, index) => {
+          mensaje += `Cuenta ${index + 1}:%0A`;
+          mensaje += `Banco: ${cuenta.banco}%0A`;
+          mensaje += `Cuenta: ${cuenta.cuenta}%0A`;
+          mensaje += `CLABE: ${cuenta.clabe}%0A`;
+          mensaje += `Beneficiario: ${cuenta.beneficiario}%0A%0A`;
+        });
+      } else {
+        mensaje += `⚠ Esta rifa aún no tiene cuentas bancarias registradas.`;
+      }
 
       const url = `https://wa.me/?text=${mensaje}`;
       window.open(url, "_blank");
@@ -153,11 +159,17 @@
     }
 
     function generarImagen() {
-      html2canvas(document.getElementById("comprobante")).then(canvas => {
+      html2canvas(document.getElementById("comprobante")).then(async (canvas) => {
         const enlace = document.createElement("a");
         enlace.download = `comprobante_${Date.now()}.png`;
         enlace.href = canvas.toDataURL();
         enlace.click();
+
+        const imageData = canvas.toDataURL("image/png");
+        const storageRef = ref(storage, `comprobantes/${rifaId}/${Date.now()}.png`);
+        await uploadString(storageRef, imageData, 'data_url');
+
+        alert("✅ Comprobante respaldado correctamente.");
       });
     }
 
@@ -171,6 +183,7 @@
     .ocupado { background:#f8d7da; cursor:not-allowed; }
     .seleccionado { background:#fff3cd; border:2px solid #ffc107; }
   </style>
+
 </head>
 
 <body>
@@ -182,14 +195,13 @@
   <div id="listaBoletos"></div>
 
   <h3>Tus datos:</h3>
-  <input type="text" id="nombre" placeholder="Tu nombre"><br><br>
+  <input type="text" id="nombre" placeholder="Nombre real y completo"><br><br>
   <input type="text" id="telefono" placeholder="Teléfono"><br><br>
-  <input type="text" id="poblacion" placeholder="Población"><br><br>
+  <input type="text" id="poblacion" placeholder="Población y estado"><br><br>
   <button onclick="confirmarCompra()">Confirmar Compra</button>
 
   <h3>Tu comprobante:</h3>
   <div id="comprobante" style="border:1px solid #333; padding:20px; width:300px; margin-bottom:20px;"></div>
   <button onclick="generarImagen()">Descargar Comprobante</button>
-  <canvas id="canvasCaptura" style="display:none;"></canvas>
 </body>
 </html>
