@@ -2,9 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>RIFAS MASTER - Rifa</title>
-
-  <!-- html2canvas para generar el comprobante -->
+  <title>RIFAS MASTER - Comprar Boletos</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script type="module">
@@ -33,7 +31,6 @@
     async function cargarRifa() {
       const docRef = doc(db, "rifas", rifaId);
       const docSnap = await getDoc(docRef);
-
       if (docSnap.exists()) {
         const data = docSnap.data();
         document.getElementById("nombreRifa").innerText = data.nombreRifa;
@@ -50,10 +47,8 @@
       const lista = document.getElementById("listaBoletos");
       lista.innerHTML = "";
       boletosSeleccionados = [];
-
       const boletosRef = collection(db, "rifas", rifaId, "boletos");
       const querySnapshot = await getDocs(boletosRef);
-
       querySnapshot.forEach((docSnap) => {
         const data = docSnap.data();
         const div = document.createElement("div");
@@ -91,7 +86,6 @@
       const nombre = document.getElementById("nombre").value.trim();
       const telefono = document.getElementById("telefono").value.trim();
       const poblacion = document.getElementById("poblacion").value.trim();
-
       if (!nombre || !telefono || boletosSeleccionados.length === 0) {
         alert("Completa tus datos y selecciona boletos.");
         return;
@@ -168,7 +162,6 @@
         const imageData = canvas.toDataURL("image/png");
         const storageRef = ref(storage, `comprobantes/${rifaId}/${Date.now()}.png`);
         await uploadString(storageRef, imageData, 'data_url');
-
         alert("✅ Comprobante respaldado correctamente.");
       });
     }
@@ -183,7 +176,6 @@
     .ocupado { background:#f8d7da; cursor:not-allowed; }
     .seleccionado { background:#fff3cd; border:2px solid #ffc107; }
   </style>
-
 </head>
 
 <body>
