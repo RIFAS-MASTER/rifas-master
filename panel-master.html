@@ -2,7 +2,43 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>RIFAS MASTER - Crear Nueva Rifa</title>
+  <title>Crear Nueva Rifa</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    label { font-weight: bold; }
+    input, textarea { margin-bottom: 10px; width: 300px; }
+  </style>
+</head>
+<body>
+  <h1>Crear Nueva Rifa</h1>
+
+  <label>Nombre de la Rifa:</label><br>
+  <input type="text" id="nombreRifa"><br>
+
+  <label>Cantidad de Boletos:</label><br>
+  <input type="number" id="cantidadBoletos"><br>
+
+  <label>Precio por Boleto:</label><br>
+  <input type="number" id="precioBoleto"><br>
+
+  <h3>Premios:</h3>
+  <div id="premiosContainer">
+    <input type="text" name="premio" placeholder="Premio 1"><br>
+  </div>
+  <button type="button" onclick="agregarPremio()">Agregar otro premio</button><br><br>
+
+  <h3>Cuentas Bancarias:</h3>
+  <div id="listaCuentas"></div>
+  <input type="text" id="bancoTemp" placeholder="Banco"><br>
+  <input type="text" id="cuentaTemp" placeholder="Cuenta"><br>
+  <input type="text" id="clabeTemp" placeholder="CLABE"><br>
+  <input type="text" id="benefTemp" placeholder="Beneficiario"><br>
+  <button type="button" onclick="agregarCuenta()">Agregar Cuenta</button><br><br>
+
+  <label>Activar Tómbola Aleatoria:</label>
+  <input type="checkbox" id="tombola"><br><br>
+
+  <button onclick="crearRifa()">Crear Rifa</button>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -22,7 +58,44 @@
 
     let cuentas = [];
 
-    function agregarCuenta() {
+    window.crearRifa = async function () {
+      const nombreRifa = document.getElementById("nombreRifa").value.trim();
+      const cantidadBoletos = parseInt(document.getElementById("cantidadBoletos").value);
+      const precioBoleto = parseFloat(document.getElementById("precioBoleto").value);
+      const activarTombola = document.getElementById("tombola").checked;
+
+      // capturar premios dinámicos
+      const premiosInputs = document.getElementsByName("premio");
+      const premios = [];
+      premiosInputs.forEach(input => {
+        if (input.value.trim() !== "") {
+          premios.push(input.value.trim());
+        }
+      });
+
+      if (!nombreRifa || !cantidadBoletos || !precioBoleto) {
+        alert("Por favor completa todos los campos obligatorios.");
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "rifas"), {
+          nombreRifa,
+          cantidadBoletos,
+          precioBoleto,
+          cuentasBancarias: cuentas,
+          premios,
+          activarTombola,
+          fechaCreacion: new Date()
+        });
+        alert("✅ Rifa creada exitosamente.");
+        location.reload();
+      } catch (e) {
+        console.error("Error al crear la rifa: ", e);
+      }
+    }
+
+    window.agregarCuenta = function () {
       const banco = document.getElementById("bancoTemp").value.trim();
       const cuenta = document.getElementById("cuentaTemp").value.trim();
       const clabe = document.getElementById("clabeTemp").value.trim();
@@ -44,68 +117,27 @@
 
     function actualizarListaCuentas() {
       const lista = document.getElementById("listaCuentas");
-      lista.innerHTML = cuentas.map((c, i) =>
-        `${i + 1}. ${c.banco} - ${c.cuenta} (${c.beneficiario})`
-      ).join("<br>");
+      lista.innerHTML = "";
+      cuentas.forEach((c, i) => {
+        lista.innerHTML += `${i+1}) ${c.banco} - ${c.cuenta} (${c.beneficiario})<br>`;
+      });
     }
 
-    async function crearRifa() {
-      const nombreRifa = document.getElementById("nombreRifa").value.trim();
-      const cantidadBoletos = parseInt(document.getElementById("cantidadBoletos").value);
-      const precioBoleto = parseFloat(document.getElementById("precioBoleto").value);
-      const premios = document.getElementById("premios").value.trim();
-      const activarTombola = document.getElementById("tombola").checked;
-
-      if (!nombreRifa || !cantidadBoletos || !precioBoleto) {
-        alert("Por favor completa todos los campos obligatorios.");
+    let contadorPremios = 1;
+    window.agregarPremio = function () {
+      if (contadorPremios >= 5) {
+        alert("Máximo 5 premios permitidos.");
         return;
       }
-
-      await addDoc(collection(db, "rifas"), {
-        nombreRifa,
-        cantidadBoletos,
-        precioBoleto,
-        cuentasBancarias: cuentas,
-        premios,
-        activarTombola,
-        fechaCreacion: new Date()
-      });
-
-      alert("✅ Rifa creada correctamente");
+      contadorPremios++;
+      const container = document.getElementById("premiosContainer");
+      const input = document.createElement("input");
+      input.type = "text";
+      input.name = "premio";
+      input.placeholder = `Premio ${contadorPremios}`;
+      container.appendChild(input);
+      container.appendChild(document.createElement("br"));
     }
-
-    // Exportamos las funciones al ámbito global para que el botón las vea
-    window.crearRifa = crearRifa;
-    window.agregarCuenta = agregarCuenta;
   </script>
-</head>
-
-<body>
-  <h1>Crear Nueva Rifa</h1>
-
-  <label>Nombre de la Rifa:</label><br>
-  <input type="text" id="nombreRifa"><br><br>
-
-  <label>Cantidad de Boletos:</label><br>
-  <input type="number" id="cantidadBoletos"><br><br>
-
-  <label>Precio por Boleto:</label><br>
-  <input type="number" id="precioBoleto"><br><br>
-
-  <label>Premios:</label><br>
-  <input type="text" id="premios" placeholder="Ej: 1er, 2do, 3er lugar"><br><br>
-
-  <label>Activar Tómbola Aleatoria:</label>
-  <input type="checkbox" id="tombola"><br><br>
-
-  <h3>Cuentas Bancarias:</h3>
-  <div id="listaCuentas"></div>
-  <input type="text" id="bancoTemp" placeholder="Banco"><br>
-  <input type="text" id="cuentaTemp" placeholder="Cuenta"><br>
-  <input type="text" id="clabeTemp" placeholder="CLABE"><br>
-  <input type="text" id="benefTemp" placeholder="Beneficiario"><br>
-  <button type="button" onclick="agregarCuenta()">Agregar Cuenta</button><br><br>
-
-  <button onclick="crearRifa()">Crear Rifa</button>
 </body>
 </html>
