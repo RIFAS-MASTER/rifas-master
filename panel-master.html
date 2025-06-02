@@ -2,13 +2,12 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>RIFAS MASTER - Panel Master</title>
+  <title>RIFAS MASTER - Crear Nueva Rifa</title>
+
   <script type="module">
-    // Importamos Firebase SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // Configuración de Firebase (ya ajustada)
     const firebaseConfig = {
       apiKey: "AIzaSyC_YFwpvNIQPIFUsjtfSxuV45r7Hxuvh7E",
       authDomain: "rifasmaster.firebaseapp.com",
@@ -18,19 +17,42 @@
       appId: "1:441338254596:web:c0e39d99789d193ee6ec51"
     };
 
-    // Inicializar Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Función para crear una nueva rifa
+    let cuentas = [];
+
+    function agregarCuenta() {
+      const banco = document.getElementById("bancoTemp").value.trim();
+      const cuenta = document.getElementById("cuentaTemp").value.trim();
+      const clabe = document.getElementById("clabeTemp").value.trim();
+      const beneficiario = document.getElementById("benefTemp").value.trim();
+
+      if (!banco || !cuenta || !beneficiario) {
+        alert("Completa todos los campos de la cuenta.");
+        return;
+      }
+
+      cuentas.push({ banco, cuenta, clabe, beneficiario });
+      actualizarListaCuentas();
+
+      document.getElementById("bancoTemp").value = "";
+      document.getElementById("cuentaTemp").value = "";
+      document.getElementById("clabeTemp").value = "";
+      document.getElementById("benefTemp").value = "";
+    }
+
+    function actualizarListaCuentas() {
+      const lista = document.getElementById("listaCuentas");
+      lista.innerHTML = cuentas.map((c, i) =>
+        `${i + 1}. ${c.banco} - ${c.cuenta} (${c.beneficiario})`
+      ).join("<br>");
+    }
+
     async function crearRifa() {
       const nombreRifa = document.getElementById("nombreRifa").value.trim();
       const cantidadBoletos = parseInt(document.getElementById("cantidadBoletos").value);
       const precioBoleto = parseFloat(document.getElementById("precioBoleto").value);
-      const banco = document.getElementById("banco").value.trim();
-      const cuenta = document.getElementById("cuenta").value.trim();
-      const clabe = document.getElementById("clabe").value.trim();
-      const beneficiario = document.getElementById("beneficiario").value.trim();
       const premios = document.getElementById("premios").value.trim();
       const activarTombola = document.getElementById("tombola").checked;
 
@@ -39,25 +61,17 @@
         return;
       }
 
-      try {
-        await addDoc(collection(db, "rifas"), {
-          nombreRifa,
-          cantidadBoletos,
-          precioBoleto,
-          banco,
-          cuenta,
-          clabe,
-          beneficiario,
-          premios,
-          activarTombola,
-          fechaCreacion: new Date()
-        });
-        alert("✅ Rifa creada exitosamente.");
-        document.getElementById("formRifa").reset();
-      } catch (e) {
-        console.error("Error al crear la rifa: ", e);
-        alert("Error al crear la rifa.");
-      }
+      await addDoc(collection(db, "rifas"), {
+        nombreRifa,
+        cantidadBoletos,
+        precioBoleto,
+        cuentasBancarias: cuentas,
+        premios,
+        activarTombola,
+        fechaCreacion: new Date()
+      });
+
+      alert("✅ Rifa creada correctamente");
     }
 
     window.crearRifa = crearRifa;
@@ -65,127 +79,31 @@
 </head>
 
 <body>
-  <h1>🎯 RIFAS MASTER - CREACIÓN DE NUEVA RIFA</h1>
-  <form id="formRifa" onsubmit="event.preventDefault(); crearRifa();">
-    <label>Nombre de la Rifa:</label><br>
-    <input type="text" id="nombreRifa" required><br><br>
+  <h1>Crear Nueva Rifa</h1>
 
-    <label>Cantidad de Boletos:</label><br>
-    <input type="number" id="cantidadBoletos" required><br><br>
+  <label>Nombre de la Rifa:</label><br>
+  <input type="text" id="nombreRifa"><br><br>
 
-    <label>Precio por Boleto:</label><br>
-    <input type="number" id="precioBoleto" value="2000" required><br><br>
+  <label>Cantidad de Boletos:</label><br>
+  <input type="number" id="cantidadBoletos"><br><br>
 
-    <label>Banco:</label><br>
-    <input type="text" id="banco"><br><br>
+  <label>Precio por Boleto:</label><br>
+  <input type="number" id="precioBoleto"><br><br>
 
-    <label>Cuenta:</label><br>
-    <input type="text" id="cuenta"><br><br>
+  <label>Premios:</label><br>
+  <input type="text" id="premios" placeholder="Ej: 1er, 2do, 3er lugar"><br><br>
 
-    <label>CLABE:</label><br>
-    <input type="text" id="clabe"><br><br>
+  <label>Activar Tómbola Aleatoria:</label>
+  <input type="checkbox" id="tombola"><br><br>
 
-    <label>Beneficiario:</label><br>
-    <input type="text" id="beneficiario"><br><br>
+  <h3>Cuentas Bancarias:</h3>
+  <div id="listaCuentas"></div>
+  <input type="text" id="bancoTemp" placeholder="Banco"><br>
+  <input type="text" id="cuentaTemp" placeholder="Cuenta"><br>
+  <input type="text" id="clabeTemp" placeholder="CLABE"><br>
+  <input type="text" id="benefTemp" placeholder="Beneficiario"><br>
+  <button type="button" onclick="agregarCuenta()">Agregar Cuenta</button><br><br>
 
-    <label>Premios (descripción general):</label><br>
-    <textarea id="premios" rows="3"></textarea><br><br>
-
-    <label>Activar Tómbola:</label>
-    <input type="checkbox" id="tombola"><br><br>
-<label>¿Modo Aleatorio?</label>
-<input type="checkbox" id="modoAleatorio"><br><br>
-
-<label>Oportunidades por boleto (solo si es aleatorio):</label><br>
-<input type="number" id="oportunidades"><br><br>
-
-    
-    <button type="submit">Crear Rifa</button>
-  </form>
+  <button onclick="crearRifa()">Crear Rifa</button>
 </body>
 </html>
-
-
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyC_YFwpvNIQPIFUsjtfSxuV45r7Hxuvh7E",
-    authDomain: "rifasmaster.firebaseapp.com",
-    projectId: "rifasmaster",
-    storageBucket: "rifasmaster.appspot.com",
-    messagingSenderId: "441338254596",
-    appId: "1:441338254596:web:c0e39d99789d193ee6ec51"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  async function crearRifa() {
-    const nombreRifa = document.getElementById("nombreRifa").value.trim();
-    const cantidadBoletos = parseInt(document.getElementById("cantidadBoletos").value);
-    const precioBoleto = parseFloat(document.getElementById("precioBoleto").value);
-    const banco = document.getElementById("banco").value.trim();
-    const cuenta = document.getElementById("cuenta").value.trim();
-    const clabe = document.getElementById("clabe").value.trim();
-    const beneficiario = document.getElementById("beneficiario").value.trim();
-    const premios = document.getElementById("premios").value.trim();
-    const activarTombola = document.getElementById("tombola").checked;
-    const modoAleatorio = document.getElementById("modoAleatorio").checked;
-    const oportunidadesPorBoleto = parseInt(document.getElementById("oportunidades").value) || 0;
-
-    if (!nombreRifa || !cantidadBoletos || !precioBoleto) {
-      alert("Por favor completa los campos obligatorios.");
-      return;
-    }
-
-    try {
-      const rifaRef = await addDoc(collection(db, "rifas"), {
-        nombreRifa,
-        cantidadBoletos,
-        precioBoleto,
-        banco,
-        cuenta,
-        clabe,
-        beneficiario,
-        premios,
-        activarTombola,
-        modoAleatorio,
-        oportunidadesPorBoleto,
-        fechaCreacion: new Date()
-      });
-
-      await generarBoletos(rifaRef.id, cantidadBoletos, modoAleatorio, oportunidadesPorBoleto);
-      alert("✅ Rifa y boletos creados.");
-      document.getElementById("formRifa").reset();
-    } catch (e) {
-      console.error("Error: ", e);
-      alert("Error al crear la rifa.");
-    }
-  }
-
-  async function generarBoletos(rifaId, cantidad, aleatorio, oportunidades) {
-    for (let i = 1; i <= cantidad; i++) {
-      let oportunidadesArray = [];
-      if (aleatorio) {
-        while (oportunidadesArray.length < oportunidades) {
-          const num = Math.floor(Math.random() * (cantidad * oportunidades)) + 1;
-          if (!oportunidadesArray.includes(num)) {
-            oportunidadesArray.push(num);
-          }
-        }
-      }
-      const boletoData = {
-        numeroBoleto: i,
-        oportunidades: oportunidadesArray,
-        estado: "disponible",
-        comprador: "",
-        fechaRegistro: null
-      };
-      await setDoc(doc(db, "rifas", rifaId, "boletos", i.toString()), boletoData);
-    }
-  }
-
-  window.crearRifa = crearRifa;
-</script>
