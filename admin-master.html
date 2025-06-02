@@ -2,67 +2,22 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>RIFAS MASTER - Panel Admin</title>
+  <title>Panel de Rifas - Rifas Master</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .rifa-box { border: 1px solid #aaa; padding: 15px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+
+  <h1>Panel Administrativo - Rifas Master</h1>
+
+  <div id="listaRifas">Cargando rifas...</div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyC_YFwpvNIQPIFUsjtfSxuV45r7Hxuvh7E",
-      authDomain: "rifasmaster.firebaseapp.com",
-      projectId: "rifasmaster",
-      storageBucket: "rifasmaster.appspot.com",
-      messagingSenderId: "441338254596",
-      appId: "1:441338254596:web:c0e39d99789d193ee6ec51"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    async function cargarRifas() {
-      const lista = document.getElementById("listaRifas");
-      lista.innerHTML = "";
-
-      const querySnapshot = await getDocs(collection(db, "rifas"));
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-
-        const div = document.createElement("div");
-        div.style.border = "1px solid #ccc";
-        div.style.margin = "10px";
-        div.style.padding = "10px";
-
-        const fecha = data.fechaCreacion?.toDate ? data.fechaCreacion.toDate().toLocaleString() : "";
-
-        div.innerHTML = `
-          <h3>${data.nombreRifa}</h3>
-          <p>Boletos: ${data.cantidadBoletos}</p>
-          <p>Precio por boleto: $${data.precioBoleto}</p>
-          <p>Fecha creación: ${fecha}</p>
-          <button onclick="verBoletos('${doc.id}')">Ver Detalle</button>
-        `;
-
-        lista.appendChild(div);
-      });
-    }
-
-    function verBoletos(rifaId) {
-      window.location.href = `detalle-boletos.html?id=${rifaId}`;
-    }
-
-    window.onload = cargarRifas;
-      window.verBoletos = verBoletos;
-  </script>
-
-  <style>
-    body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; }
-    h1 { color: #333; }
-  </style>
-</head>
-
-<body>
-  <h1>🎯 Panel Administrativo RIFAS MASTER</h1>
-  <div id="listaRifas">Cargando rifas...</div>
-</body>
-</html>
+      authDomain: "rifasmaster.firebaseapp.com
