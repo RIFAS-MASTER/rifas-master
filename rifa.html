@@ -2,13 +2,34 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>RIFAS MASTER - Comprar Boletos</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <title>Venta de Boletos - Rifas Master</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .boleto { display: inline-block; border: 1px solid #aaa; padding: 10px; margin: 5px; cursor: pointer; }
+    .disponible { background: #def; }
+    .ocupado { background: #f88; cursor: not-allowed; }
+    .seleccionado { background: #cfc; border: 2px solid #0a0; }
+  </style>
+</head>
+<body>
+
+  <h1 id="nombreRifa">Cargando Rifa...</h1>
+  <h3>Premios:</h3>
+  <ul id="listaPremios"></ul>
+  <p>Precio por boleto: <span id="precioBoleto"></span></p>
+
+  <h3>Selecciona tus boletos:</h3>
+  <div id="listaBoletos"></div>
+
+  <h3>Datos del comprador:</h3>
+  <input type="text" id="nombre" placeholder="Nombre completo"><br>
+  <input type="text" id="telefono" placeholder="Teléfono"><br>
+  <input type="text" id="poblacion" placeholder="Población"><br>
+  <button onclick="confirmarCompra()">Confirmar compra</button>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { getStorage, ref, uploadString } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+    import { getFirestore, doc, getDoc, collection, addDoc, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyC_YFwpvNIQPIFUsjtfSxuV45r7Hxuvh7E",
@@ -21,179 +42,97 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const storage = getStorage(app);
 
     const params = new URLSearchParams(window.location.search);
     const rifaId = params.get("id");
-    let modoAleatorio = false;
+
+    let dataRifa = {};
     let boletosSeleccionados = [];
 
     async function cargarRifa() {
       const docRef = doc(db, "rifas", rifaId);
       const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        document.getElementById("nombreRifa").innerText = data.nombreRifa;
-        document.getElementById("precioBoleto").innerText = data.precioBoleto;
-        document.getElementById("totalBoletos").innerText = data.cantidadBoletos;
-        modoAleatorio = data.modoAleatorio;
-        cargarBoletos();
-      } else {
-        alert("Rifa no encontrada");
+      if (!docSnap.exists()) {
+        alert("Rifa no encontrada.");
+        return;
       }
+      dataRifa = docSnap.data();
+      document.getElementById("nombreRifa").innerText = dataRifa.nombreRifa;
+      document.getElementById("precioBoleto").innerText = `$${dataRifa.precioBoleto}`;
+
+      // mostrar premios
+      const premiosUL = document.getElementById("listaPremios");
+      dataRifa.premios.forEach(premio => {
+        const li = document.createElement("li");
+        li.textContent = premio;
+        premiosUL.appendChild(li);
+      });
+
+      cargarBoletos();
     }
 
     async function cargarBoletos() {
+      const total = dataRifa.cantidadBoletos;
+      const ocupadosSnapshot = await getDocs(query(collection(db, "compradores"), where("rifaId", "==", rifaId)));
+
+      let ocupados = [];
+      ocupadosSnapshot.forEach(doc => {
+        ocupados = ocupados.concat(doc.data().boletos);
+      });
+
       const lista = document.getElementById("listaBoletos");
       lista.innerHTML = "";
-      boletosSeleccionados = [];
-      const boletosRef = collection(db, "rifas", rifaId, "boletos");
-      const querySnapshot = await getDocs(boletosRef);
-      querySnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
+
+      for (let i = 1; i <= total; i++) {
         const div = document.createElement("div");
         div.classList.add("boleto");
-        div.dataset.numero = docSnap.id;
+        div.innerText = i.toString().padStart(3, "0");
 
-        if (data.estado === "disponible") {
-          div.classList.add("disponible");
-          div.onclick = () => toggleSeleccion(div);
-        } else {
+        if (ocupados.includes(i)) {
           div.classList.add("ocupado");
+        } else {
+          div.classList.add("disponible");
+          div.onclick = () => seleccionarBoleto(i, div);
         }
-
-        let contenido = `#${data.numeroBoleto}`;
-        if (modoAleatorio) {
-          contenido += `<br>(${data.oportunidades.join(",")})`;
-        }
-        div.innerHTML = contenido;
         lista.appendChild(div);
-      });
+      }
     }
 
-    function toggleSeleccion(div) {
-      const numero = div.dataset.numero;
-      if (boletosSeleccionados.includes(numero)) {
-        boletosSeleccionados = boletosSeleccionados.filter(n => n !== numero);
+    function seleccionarBoleto(num, div) {
+      if (boletosSeleccionados.includes(num)) {
+        boletosSeleccionados = boletosSeleccionados.filter(n => n !== num);
         div.classList.remove("seleccionado");
       } else {
-        boletosSeleccionados.push(numero);
+        boletosSeleccionados.push(num);
         div.classList.add("seleccionado");
       }
     }
 
-    async function confirmarCompra() {
+    window.confirmarCompra = async function () {
       const nombre = document.getElementById("nombre").value.trim();
       const telefono = document.getElementById("telefono").value.trim();
       const poblacion = document.getElementById("poblacion").value.trim();
+
       if (!nombre || !telefono || boletosSeleccionados.length === 0) {
         alert("Completa tus datos y selecciona boletos.");
         return;
       }
 
-      for (const num of boletosSeleccionados) {
-        const boletoRef = doc(db, "rifas", rifaId, "boletos", num);
-        await updateDoc(boletoRef, {
-          estado: "ocupado",
-          comprador: nombre,
-          telefono,
-          poblacion,
-          fechaRegistro: new Date()
-        });
-      }
-
-      alert("✅ Boletos reservados correctamente.");
-
-      const docRef = doc(db, "rifas", rifaId);
-      const docSnap = await getDoc(docRef);
-      const dataRifa = docSnap.data();
-
-      const boletosTexto = boletosSeleccionados.join(", ");
-      const total = boletosSeleccionados.length * dataRifa.precioBoleto;
-
-      generarWhatsapp(nombre, telefono, total, boletosTexto, dataRifa);
-      mostrarComprobante(nombre, telefono, poblacion, boletosTexto, total, dataRifa.nombreRifa);
-    }
-
-    async function generarWhatsapp(nombre, telefono, total, boletosTexto, dataRifa) {
-      let mensaje = `🎟 *Confirmación de participación en ${dataRifa.nombreRifa}*%0A`;
-      mensaje += `👤 Nombre: ${nombre}%0A`;
-      mensaje += `📱 Teléfono: ${telefono}%0A`;
-      mensaje += `🎫 Boletos: ${boletosTexto}%0A`;
-      mensaje += `💰 Total a pagar: $${total}%0A%0A`;
-      mensaje += `🏦 Datos de pago:%0A`;
-
-      if (dataRifa.cuentasBancarias && dataRifa.cuentasBancarias.length > 0) {
-        dataRifa.cuentasBancarias.forEach((cuenta, index) => {
-          mensaje += `Cuenta ${index + 1}:%0A`;
-          mensaje += `Banco: ${cuenta.banco}%0A`;
-          mensaje += `Cuenta: ${cuenta.cuenta}%0A`;
-          mensaje += `CLABE: ${cuenta.clabe}%0A`;
-          mensaje += `Beneficiario: ${cuenta.beneficiario}%0A%0A`;
-        });
-      } else {
-        mensaje += `⚠ Esta rifa aún no tiene cuentas bancarias registradas.`;
-      }
-
-      const url = `https://wa.me/?text=${mensaje}`;
-      window.open(url, "_blank");
-    }
-
-    function mostrarComprobante(nombre, telefono, poblacion, boletosTexto, total, rifaNombre) {
-      const comprobanteDiv = document.getElementById("comprobante");
-      comprobanteDiv.innerHTML = `
-        <h3>Rifa: ${rifaNombre}</h3>
-        <p>Nombre: ${nombre}</p>
-        <p>Teléfono: ${telefono}</p>
-        <p>Población: ${poblacion}</p>
-        <p>Boletos: ${boletosTexto}</p>
-        <p>Total: $${total}</p>
-        <p>Fecha: ${new Date().toLocaleString()}</p>
-      `;
-    }
-
-    function generarImagen() {
-      html2canvas(document.getElementById("comprobante")).then(async (canvas) => {
-        const enlace = document.createElement("a");
-        enlace.download = `comprobante_${Date.now()}.png`;
-        enlace.href = canvas.toDataURL();
-        enlace.click();
-
-        const imageData = canvas.toDataURL("image/png");
-        const storageRef = ref(storage, `comprobantes/${rifaId}/${Date.now()}.png`);
-        await uploadString(storageRef, imageData, 'data_url');
-        alert("✅ Comprobante respaldado correctamente.");
+      await addDoc(collection(db, "compradores"), {
+        rifaId,
+        nombre,
+        telefono,
+        poblacion,
+        boletos: boletosSeleccionados,
+        fecha: serverTimestamp()
       });
+
+      alert("✅ Compra registrada.");
+      location.reload();
     }
 
-    window.onload = cargarRifa;
-    window.confirmarCompra = confirmarCompra;
+    cargarRifa();
   </script>
 
-  <style>
-    .boleto { display:inline-block; border:1px solid #aaa; padding:10px; margin:5px; cursor:pointer; }
-    .disponible { background:#d4edda; }
-    .ocupado { background:#f8d7da; cursor:not-allowed; }
-    .seleccionado { background:#fff3cd; border:2px solid #ffc107; }
-  </style>
-</head>
-
-<body>
-  <h1 id="nombreRifa"></h1>
-  <p>Precio por boleto: $<span id="precioBoleto"></span></p>
-  <p>Total de boletos: <span id="totalBoletos"></span></p>
-
-  <h3>Selecciona tus boletos:</h3>
-  <div id="listaBoletos"></div>
-
-  <h3>Tus datos:</h3>
-  <input type="text" id="nombre" placeholder="Nombre real y completo"><br><br>
-  <input type="text" id="telefono" placeholder="Teléfono"><br><br>
-  <input type="text" id="poblacion" placeholder="Población y estado"><br><br>
-  <button onclick="confirmarCompra()">Confirmar Compra</button>
-
-  <h3>Tu comprobante:</h3>
-  <div id="comprobante" style="border:1px solid #333; padding:20px; width:300px; margin-bottom:20px;"></div>
-  <button onclick="generarImagen()">Descargar Comprobante</button>
 </body>
 </html>
