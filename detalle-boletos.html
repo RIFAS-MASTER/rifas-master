@@ -2,11 +2,22 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>RIFAS MASTER - Detalle Boletos</title>
+  <title>Detalle de Compradores - Rifas Master</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .comprador { border: 1px solid #ccc; padding: 15px; margin: 10px; border-radius: 8px; background: #f9f9f9; }
+    .boletos { font-weight: bold; color: #007BFF; }
+  </style>
+</head>
+<body>
+
+  <h1>Detalle de Compradores</h1>
+  <h3 id="nombreRifa">Rifa: ...</h3>
+  <div id="listaCompradores">Cargando compradores...</div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyC_YFwpvNIQPIFUsjtfSxuV45r7Hxuvh7E",
@@ -23,59 +34,52 @@
     const params = new URLSearchParams(window.location.search);
     const rifaId = params.get("id");
 
-    async function cargarDetalle() {
+    async function cargarRifa() {
       const docRef = doc(db, "rifas", rifaId);
       const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        document.getElementById("nombreRifa").innerText = data.nombreRifa;
-        cargarBoletos();
-      } else {
+      if (!docSnap.exists()) {
         alert("Rifa no encontrada.");
+        return;
       }
+      const dataRifa = docSnap.data();
+      document.getElementById("nombreRifa").innerText = `Rifa: ${dataRifa.nombreRifa}`;
+      cargarCompradores();
     }
 
-    async function cargarBoletos() {
-      const lista = document.getElementById("listaBoletos");
+    async function cargarCompradores() {
+      const lista = document.getElementById("listaCompradores");
       lista.innerHTML = "";
 
-      const boletosRef = collection(db, "rifas", rifaId, "boletos");
-      const querySnapshot = await getDocs(boletosRef);
+      const q = query(collection(db, "compradores"), where("rifaId", "==", rifaId));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        lista.innerHTML = "No hay compradores aún.";
+        return;
+      }
 
       querySnapshot.forEach((docSnap) => {
         const data = docSnap.data();
+
         const div = document.createElement("div");
-        div.style.border = "1px solid #aaa";
-        div.style.margin = "10px";
-        div.style.padding = "10px";
-        div.style.backgroundColor = data.estado === "ocupado" ? "#fce4ec" : "#e8f5e9";
+        div.classList.add("comprador");
 
-        let contenido = `<b>Boleto #${data.numeroBoleto}</b><br>Estado: ${data.estado}`;
+        const fechaCompra = data.fecha?.toDate ? data.fecha.toDate().toLocaleString() : "";
 
-        if (data.estado === "ocupado") {
-          contenido += `<br>Nombre: ${data.comprador}`;
-          contenido += `<br>Tel: ${data.telefono}`;
-          contenido += `<br>Población: ${data.poblacion}`;
-          contenido += `<br>Fecha: ${data.fechaRegistro?.toDate ? data.fechaRegistro.toDate().toLocaleString() : ""}`;
-        }
+        div.innerHTML = `
+          <p><b>Nombre:</b> ${data.nombre}</p>
+          <p><b>Teléfono:</b> ${data.telefono}</p>
+          <p><b>Población:</b> ${data.poblacion}</p>
+          <p class="boletos">Boletos: ${data.boletos.join(", ")}</p>
+          <p><b>Fecha compra:</b> ${fechaCompra}</p>
+        `;
 
-        div.innerHTML = contenido;
         lista.appendChild(div);
       });
     }
 
-    window.onload = cargarDetalle;
+    cargarRifa();
   </script>
 
-  <style>
-    body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; }
-    h1 { color: #333; }
-  </style>
-</head>
-
-<body>
-  <h1>Detalle de Rifa: <span id="nombreRifa"></span></h1>
-  <div id="listaBoletos">Cargando boletos...</div>
 </body>
 </html>
