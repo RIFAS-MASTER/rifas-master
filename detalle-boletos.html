@@ -30,7 +30,6 @@
       if (docSnap.exists()) {
         const data = docSnap.data();
         document.getElementById("nombreRifa").innerText = data.nombreRifa;
-
         cargarBoletos();
       } else {
         alert("Rifa no encontrada.");
@@ -70,11 +69,9 @@
   </script>
 
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f4; }
+    body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; }
     h1 { color: #333; }
-    #listaBoletos div { border-radius: 8px; }
   </style>
-
 </head>
 
 <body>
